@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>British Council Pickup System</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 10px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        @media (min-width: 768px) {
+            header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                text-align: left;
+                padding: 15px 25px;
+            }
+        }
+        h1 { margin: 0; color: var(--primary); font-size: 1.25rem; }
+        @media (min-width: 768px) {
+            h1 { font-size: 1.5rem; }
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+        @media (min-width: 768px) {
+            .nav-tabs { width: auto; }
+        }
+        .nav-tabs button {
+            flex: 1;
+            background: #e5e7eb;
+            color: var(--text);
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        @media (min-width: 768px) {
+            .nav-tabs button {
+                flex: initial;
+                padding: 8px 16px;
+                border-radius: 6px;
+                margin-left: 5px;
+            }
+        }
+        .nav-tabs button.active {
+            background: var(--primary);
+            color: white;
+        }
+        .view-section { display: none; }
+        .view-section.active { display: grid; gap: 15px; }
+
+        .dashboard-grid, .manager-grid {
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 900px) {
+            .dashboard-grid, .manager-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        @media (min-width: 900px) {
+            .panel {
+                padding: 20px;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+        }
+        h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--bg); padding-bottom: 8px; font-size: 1.1rem; }
+        @media (min-width: 768px) {
+            h2 { font-size: 1.2rem; padding-bottom: 10px; }
+        }
+        
+        .filter-group {
+            margin-bottom: 12px;
+        }
+        .filter-group label {
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #4b5563;
+        }
+        @media (min-width: 768px) {
+            .filter-group label { font-size: 0.85rem; }
+        }
+        .filter-group select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 0.95rem;
+            background: #fff;
+        }
+        @media (min-width: 768px) {
+            .filter-group select { padding: 8px; border-radius: 6px; }
+        }
+
+        .student-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        @media (min-width: 500px) {
+            .student-card {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 14px;
+            }
+        }
+        .student-info { font-weight: 600; font-size: 0.95rem; line-height: 1.3; }
+        .student-info span {
+            display: block;
+            font-size: 0.75rem;
+            color: #6b7280;
+            font-weight: normal;
+            margin-top: 2px;
+        }
+        
+        button {
+            padding: 12px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+            transition: opacity 0.2s;
+        }
+        @media (min-width: 500px) {
+            button {
+                width: auto;
+                padding: 8px 14px;
+                font-size: 0.85rem;
+                border-radius: 6px;
+            }
+        }
+        button:active { opacity: 0.8; }
+        .btn-arrive { background-color: var(--success); color: white; }
+        .btn-dismiss { background-color: var(--danger); color: white; }
+        .btn-add { background-color: var(--primary); color: white; width: 100%; margin-top: 5px; }
+        @media (min-width: 500px) {
+            .btn-add { margin-top: 10px; padding: 10px; }
+        }
+        
+        .status-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        @media (min-width: 500px) {
+            .status-badge { margin-top: 4px; padding: 3px 6px; font-size: 0.7rem; }
+        }
+        .badge-waiting { background: #fee2e2; color: #991b1b; }
+        .badge-idle { background: #e5e7eb; color: #374151; }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .card-selector {
+            display: flex;
+            gap: 4px;
+        }
+        .card-btn {
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #374151;
+            cursor: pointer;
+            width: auto;
+        }
+        .card-btn.active-card-1 {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .card-btn.active-card-2 {
+            background: var(--warning);
+            color: white;
+            border-color: var(--warning);
+        }
+
+        .attendance-toggle {
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+            background: #e5e7eb;
+            color: #374151;
+            cursor: pointer;
+            width: auto;
+            font-weight: bold;
+        }
+        .attendance-toggle.present {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+        @media (min-width: 768px) {
+            .form-control { padding: 8px; border-radius: 6px; }
+        }
+        .item-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--bg);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+        @media(min-width: 500px) {
+            .item-row { 
+                flex-direction: row; 
+                justify-content: space-between; 
+                align-items: center; 
+                padding: 8px 12px;
+                font-size: 0.9rem;
+                border-radius: 6px;
+            }
+        }
+        .btn-delete { background: #fee2e2; color: var(--danger); padding: 8px; font-size: 0.8rem; width: 100%; }
+        @media(min-width: 500px) {
+            .btn-delete { width: auto; padding: 4px 8px; font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🏫 British Council Pickup Dashboard</h1>
+        <div class="nav-tabs">
+            <button id="tab-dash" class="active" onclick="switchView('dashboard')">Live Dashboard</button>
+            <button id="tab-mgr" onclick="switchView('manager')">Data Manager</button>
+        </div>
+    </header>
+
+    <!-- VIEW 1: LIVE DASHBOARD -->
+    <div id="view-dashboard" class="view-section dashboard-grid active">
+        <!-- RECEPTION PANEL -->
+        <div class="panel">
+            <h2>Exit Door</h2>
+            <div class="filter-group">
+                <label for="rec-class-filter">Filter by Class & Dismissal Time:</label>
+                <select id="rec-class-filter" onchange="render()"></select>
+            </div>
+            <div id="reception-list"></div>
+        </div>
+
+        <!-- TEACHER PANEL -->
+        <div class="panel">
+            <h2>Waiting Room</h2>
+            <div class="filter-group">
+                <label for="teach-class-filter">Select Your Class:</label>
+                <select id="teach-class-filter" onchange="render()"></select>
+            </div>
+            <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0;">Real-time notifications for your class:</p>
+            <div id="teacher-list"></div>
+        </div>
+    </div>
+
+    <!-- VIEW 2: DATA MANAGER -->
+    <div id="view-manager" class="view-section manager-grid">
+        <div class="panel" style="grid-column: 1 / -1; background: #e0e7ff; border: 1px dashed var(--primary);">
+            <h2>🚀 Quick Google Sheet Importer</h2>
+            <p style="font-size: 0.85rem; color: #4b5563;">Paste your copied rows from the Google Sheet here to automatically create classes and sort students:</p>
+            <textarea id="bulk-sheet-input" class="form-control" rows="5" placeholder="Paste sheet content here..."></textarea>
+            <button class="btn-add" onclick="importFromSheetText()">Import Rooms & Students</button>
+        </div>
+
+        <div class="panel">
+            <h2>Manage Classes & Times</h2>
+            <input type="text" id="new-class-name" class="form-control" placeholder="Class Name (e.g., Room S10)">
+            <input type="text" id="new-class-time" class="form-control" placeholder="Dismissal Time (e.g., Fri 10:30-12:30)">
+            <button class="btn-add" onclick="addClass()">Add Class</button>
+            <div style="margin-top: 15px;" id="classes-manager-list"></div>
+        </div>
+
+        <div class="panel">
+            <h2>Manage Students</h2>
+            <input type="text" id="new-student-id" class="form-control" placeholder="Student ID (e.g., 61589341)">
+            <input type="text" id="new-student-name" class="form-control" placeholder="Student Full Name">
+            <input type="text" id="new-student-phone" class="form-control" placeholder="Parent Phone">
+            <select id="new-student-class" class="form-control"></select>
+            <button class="btn-add" onclick="addStudent()">Add Student</button>
+            <div style="margin-top: 15px;" id="students-manager-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const defaultData = {
+        classes: [
+            { id: "c1", name: "Room S10 (Hadeer Ramadan)", time: "Fri 10:30-12:30" }
+        ],
+        students: [
+            { id: "61589341", name: "Ahmed Sayed Abdelaziz", classId: "c1", phone: "201111111874", arrived: false, cardStatus: "none", present: true },
+            { id: "61627276", name: "Habiba Mohamed Taha", classId: "c1", phone: "201212220767", arrived: false, cardStatus: "none", present: true }
+        ]
+    };
+
+    function getData() {
+        const data = localStorage.getItem('school_pickup_data');
+        if (!data) return defaultData;
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            return defaultData;
+        }
+    }
+
+    function saveData(data) {
+        localStorage.setItem('school_pickup_data', JSON.stringify(data));
+        render();
+    }
+
+    function switchView(viewName) {
+        document.getElementById('view-dashboard').classList.remove('active');
+        document.getElementById('view-manager').classList.remove('active');
+        document.getElementById('tab-dash').classList.remove('active');
+        document.getElementById('tab-mgr').classList.remove('active');
+
+        if(viewName === 'dashboard') {
+            document.getElementById('view-dashboard').classList.add('active');
+            document.getElementById('tab-dash').classList.add('active');
+        } else {
+            document.getElementById('view-manager').classList.add('active');
+            document.getElementById('tab-mgr').classList.add('active');
+        }
+        render();
+    }
+
+    function toggleArrival(studentId) {
+        let db = getData();
+        db.students = db.students.map(s => {
+            if (String(s.id) === String(studentId)) {
+                s.arrived = !s.arrived;
+            }
+            return s;
+        });
+        saveData(db);
+    }
+
+    function toggleAttendance(studentId) {
+        let db = getData();
+        db.students = db.students.map(s => {
+            if (String(s.id) === String(studentId)) {
+                s.present = s.present === undefined ? false : !s.present;
+            }
+            return s;
+        });
+        saveData(db);
+    }
+
+    function setCardStatus(studentId, cardType) {
+        let db = getData();
+        db.students = db.students.map(s => {
+            if (String(s.id) === String(studentId)) {
+                s.cardStatus = s.cardStatus === cardType ? 'none' : cardType;
+            }
+            return s;
+        });
+        saveData(db);
+    }
+
+    function addClass() {
+        let name = document.getElementById('new-class-name').value.trim();
+        let time = document.getElementById('new-class-time').value.trim();
+        if(!name || !time) return alert('Please enter both class name and time.');
+        
+        let db = getData();
+        db.classes.push({ id: 'c_' + Date.now(), name, time });
+        document.getElementById('new-class-name').value = '';
+        document.getElementById('new-class-time').value = '';
+        saveData(db);
+    }
+
+    function deleteClass(classId) {
+        let db = getData();
+        db.classes = db.classes.filter(c => c.id !== classId);
+        db.students = db.students.filter(s => s.classId !== classId);
+        saveData(db);
+    }
+
+    function addStudent() {
+        let id = document.getElementById('new-student-id').value.trim();
+        let name = document.getElementById('new-student-name').value.trim();
+        let phone = document.getElementById('new-student-phone').value.trim();
+        let classId = document.getElementById('new-student-class').value;
+        if(!id || !name || !classId) return alert('Please provide student ID, name, and select a class.');
+
+        let db = getData();
+        db.students.push({ id, name, classId, phone, arrived: false, cardStatus: 'none', present: true });
+        document.getElementById('new-student-id').value = '';
+        document.getElementById('new-student-name').value = '';
+        document.getElementById('new-student-phone').value = '';
+        saveData(db);
+    }
+
+    function deleteStudent(studentId) {
+        let db = getData();
+        db.students = db.students.filter(s => String(s.id) !== String(studentId));
+        saveData(db);
+    }
+
+    function importFromSheetText() {
+        let rawText = document.getElementById('bulk-sheet-input').value.trim();
+        if (!rawText) return alert('Please paste the spreadsheet text first.');
+
+        let lines = rawText.split('\n');
+        let db = getData();
+        let currentClassId = null;
+        let importedClassesCount = 0;
+        let importedStudentsCount = 0;
+
+        lines.forEach(line => {
+            let trimmed = line.trim();
+            if (!trimmed) return;
+
+            let parts = trimmed.split(/[\t,]+/).map(p => p.trim());
+
+            if (parts[0] && parts[0].startsWith('Room ')) {
+                let roomName = parts[0];
+                let roomTime = parts[1] || '';
+                let courseOrTeacher = parts.slice(2).join(' - ');
+                let fullClassName = courseOrTeacher ? `${roomName} (${courseOrTeacher})` : roomName;
+
+                let existingClass = db.classes.find(c => c.name === fullClassName && c.time === roomTime);
+                if (existingClass) {
+                    currentClassId = existingClass.id;
+                } else {
+                    currentClassId = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                    db.classes.push({
+                        id: currentClassId,
+                        name: fullClassName,
+                        time: roomTime
+                    });
+                    importedClassesCount++;
+                }
+            } 
+            else if (currentClassId && parts[0] && /^\d+/.test(parts[0])) {
+                let id = parts[0];
+                let firstName = parts[1] || '';
+                let lastName = parts[2] || '';
+                let name = `${firstName} ${lastName}`.trim();
+                
+                let phone = '';
+                for (let i = 3; i < parts.length; i++) {
+                    if (/^\d{8,15}$/.test(parts[i])) {
+                        phone = parts[i];
+                        break;
+                    }
+                }
+
+                let existingStudentIndex = db.students.findIndex(s => String(s.id) === String(id));
+                if (existingStudentIndex === -1) {
+                    db.students.push({
+                        id: id,
+                        name: name,
+                        classId: currentClassId,
+                        phone: phone,
+                        arrived: false,
+                        cardStatus: 'none',
+                        present: true
+                    });
+                    importedStudentsCount++;
+                } else {
+                    db.students[existingStudentIndex].classId = currentClassId;
+                }
+            }
+        });
+
+        saveData(db);
+        document.getElementById('bulk-sheet-input').value = '';
+        alert(`Import Complete!\n- Classes Added: ${importedClassesCount}\n- Students Added: ${importedStudentsCount}`);
+    }
+
+    function render() {
+        let db = getData();
+
+        let recSelect = document.getElementById('rec-class-filter');
+        let teachSelect = document.getElementById('teach-class-filter');
+        let newStuClassSelect = document.getElementById('new-student-class');
+
+        let currentRecVal = recSelect.value;
+        let currentTeachVal = teachSelect.value;
+
+        recSelect.innerHTML = '<option value="ALL">-- All Students --</option>';
+        teachSelect.innerHTML = '<option value="ALL">-- All Students --</option>';
+        newStuClassSelect.innerHTML = '';
+
+        db.classes.forEach(c => {
+            let label = `${c.name} (${c.time})`;
+            recSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
+            teachSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
+            newStuClassSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
+        });
+
+        if(currentRecVal) recSelect.value = currentRecVal;
+        if(currentTeachVal) teachSelect.value = currentTeachVal;
+
+        // Sort students so present students come first, and absent students go to the end of the list
+        db.students.sort((a, b) => {
+            let aPresent = a.present !== false ? 1 : 0;
+            let bPresent = b.present !== false ? 1 : 0;
+            return bPresent - aPresent;
+        });
+
+        let recList = document.getElementById('reception-list');
+        recList.innerHTML = '';
+        let selectedRecClass = recSelect.value;
+
+        let filteredStudents = db.students.filter(s => selectedRecClass === 'ALL' || s.classId === selectedRecClass);
+        
+        if(filteredStudents.length === 0) {
+            recList.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">No students found.</p>';
+        }
+
+        filteredStudents.forEach(student => {
+            let cObj = db.classes.find(c => c.id === student.classId);
+            let className = cObj ? `${cObj.name} - ${cObj.time}` : 'Unassigned';
+            let isPresent = student.present !== false;
+            
+            let div = document.createElement('div');
+            div.className = 'student-card';
+            div.style.opacity = isPresent ? '1' : '0.6';
+            div.innerHTML = `
+                <div class="student-info">
+                    ${student.name} 
+                    <span>ID: ${student.id} | Class: ${className} | Phone: ${student.phone || 'N/A'}</span>
+                    <div class="control-row">
+                        <button class="attendance-toggle ${isPresent ? 'present' : ''}" onclick="toggleAttendance('${student.id}')">
+                            ${isPresent ? 'Present ✓' : 'Absent ✗'}
+                        </button>
+                    </div>
+                </div>
+                <button class="btn-arrive" style="background-color: ${student.arrived ? '#6b7280' : '#10b981'}" onclick="toggleArrival('${student.id}')">
+                    ${student.arrived ? 'Parent Here ✓' : 'Parent Arrived'}
+                </button>
+            `;
+            recList.appendChild(div);
+        });
+
+        let teachList = document.getElementById('teacher-list');
+        teachList.innerHTML = '';
+        let selectedTeachClass = teachSelect.value;
+
+        let teacherStudents = db.students.filter(s => selectedTeachClass === 'ALL' || s.classId === selectedTeachClass);
+
+        if(teacherStudents.length === 0) {
+            teachList.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">No students assigned to this class view.</p>';
+        }
+
+        teacherStudents.forEach(student => {
+            let isPresent = student.present !== false;
+            let cardLabel = student.cardStatus === 'card1' ? 'Card: Home Alone 🟢' : student.cardStatus === 'card2' ? 'Card: Collection Call 🟠' : 'Card: None ❌';
+            let attendanceLabel = isPresent ? 'Attendance: Present 🟢' : 'Attendance: Absent 🔴';
+            
+            let div = document.createElement('div');
+            div.className = 'student-card';
+            div.style.borderLeft = student.arrived ? '4px solid #ef4444' : isPresent ? '4px solid #10b981' : '4px solid #9ca3af';
+            div.style.opacity = isPresent ? '1' : '0.6';
+            div.innerHTML = `
+                <div class="student-info">
+                    ${student.name}
+                    <span>ID: ${student.id} | Phone: ${student.phone || 'N/A'}</span>
+                    <span style="display:block; font-size:0.75rem; color:#4b5563; margin-top:2px;">${attendanceLabel}</span>
+                    <div class="control-row">
+                        <button class="attendance-toggle ${isPresent ? 'present' : ''}" onclick="toggleAttendance('${student.id}')">
+                            ${isPresent ? 'Present ✓' : 'Absent ✗'}
+                        </button>
+                        <div class="card-selector">
+                            <span style="font-size:0.7rem; align-self:center; color:#4b5563;">Card:</span>
+                            <button class="card-btn ${student.cardStatus === 'card1' ? 'active-card-1' : ''}" onclick="setCardStatus('${student.id}', 'card1')">Collection Call</button>
+                            <button class="card-btn ${student.cardStatus === 'card2' ? 'active-card-2' : ''}" onclick="setCardStatus('${student.id}', 'card2')">Green Card</button>
+                        </div>
+                    </div>
+                    <span class="status-badge ${student.arrived ? 'badge-waiting' : 'badge-idle'}" style="margin-top:8px;">
+                        ${student.arrived ? 'Parent Downstairs 🚨' : isPresent ? 'In Class' : 'Absent'}
+                    </span>
+                </div>
+                ${student.arrived ? `<button class="btn-dismiss" onclick="toggleArrival('${student.id}')">Dismiss</button>` : ''}
+            `;
+            teachList.appendChild(div);
+        });
+
+        let classMgrList = document.getElementById('classes-manager-list');
+        classMgrList.innerHTML = '<strong style="font-size:0.85rem;">Existing Classes:</strong>';
+        db.classes.forEach(c => {
+            classMgrList.innerHTML += `
+                <div class="item-row">
+                    <span>${c.name} — <em>${c.time}</em></span>
+                    <button class="btn-delete" onclick="deleteClass('${c.id}')">Delete</button>
+                </div>
+            `;
+        });
+
+        let stuMgrList = document.getElementById('students-manager-list');
+        stuMgrList.innerHTML = '<strong style="font-size:0.85rem;">Existing Students:</strong>';
+        db.students.forEach(s => {
+            let cObj = db.classes.find(c => c.id === s.classId);
+            let cName = cObj ? cObj.name : 'Unknown';
+            stuMgrList.innerHTML += `
+                <div class="item-row">
+                    <span>${s.name} <small>(${cName})</small> <br><small style="color:#6b7280;">ID: ${s.id} | Phone: ${s.phone || 'N/A'}</small></span>
+                    <button class="btn-delete" onclick="deleteStudent('${s.id}')">Delete</button>
+                </div>
+            `;
+        });
+    }
+
+    render();
+</script>
+
+</body>
+</html>
