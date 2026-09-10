@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>British Council Pickup System</title>
+    <!-- Include Supabase JS Client from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #4f46e5;
@@ -358,29 +360,46 @@
 </div>
 
 <script>
-    const defaultData = {
-        classes: [
-            { id: "c1", name: "Room S10 (Hadeer Ramadan)", time: "Fri 10:30-12:30" }
-        ],
-        students: [
-            { id: "61589341", name: "Ahmed Sayed Abdelaziz", classId: "c1", phone: "201111111874", arrived: false, cardStatus: "none", present: true },
-            { id: "61627276", name: "Habiba Mohamed Taha", classId: "c1", phone: "201212220767", arrived: false, cardStatus: "none", present: true }
-        ]
+    // Initialize Supabase Client
+    const SUPABASE_URL = 'https://mrhffzpqsnaenkglyhzp.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_91V1wzNc5qfEDGhouYQw5g_SZP4Xigc';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    // In-memory data store synchronized with Supabase
+    let db = {
+        classes: [],
+        students: []
     };
 
-    function getData() {
-        const data = localStorage.getItem('school_pickup_data');
-        if (!data) return defaultData;
+    async function loadDataFromSupabase() {
         try {
-            return JSON.parse(data);
-        } catch (e) {
-            return defaultData;
+            const [classesRes, studentsRes] = await Promise.all([
+                supabaseClient.from('classes').select('*'),
+                supabaseClient.from('students').select('*')
+            ]);
+
+            if (classesRes.error) throw classesRes.error;
+            if (studentsRes.error) throw studentsRes.error;
+
+            db.classes = classesRes.data || [];
+            db.students = studentsRes.data || [];
+            render();
+        } catch (err) {
+            console.error('Error loading data from Supabase:', err.message);
         }
     }
 
-    function saveData(data) {
-        localStorage.setItem('school_pickup_data', JSON.stringify(data));
-        render();
+    // Set up Realtime Subscriptions to sync live data updates across screens
+    function setupRealtimeListeners() {
+        supabaseClient
+            .channel('public-db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'classes' }, payload => {
+                loadDataFromSupabase();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, payload => {
+                loadDataFromSupabase();
+            })
+            .subscribe();
     }
 
     function switchView(viewName) {
@@ -399,92 +418,114 @@
         render();
     }
 
-    function toggleArrival(studentId) {
-        let db = getData();
-        db.students = db.students.map(s => {
-            if (String(s.id) === String(studentId)) {
-                s.arrived = !s.arrived;
-            }
-            return s;
-        });
-        saveData(db);
+    async function toggleArrival(studentId) {
+        let student = db.students.find(s => String(s.id) === String(studentId));
+        if (!student) return;
+
+        const newArrivedState = !student.arrived;
+        const { error } = await supabaseClient
+            .from('students')
+            .update({ arrived: newArrivedState })
+            .eq('id', studentId);
+
+        if (error) alert('Error updating arrival: ' + error.message);
+        else loadDataFromSupabase();
     }
 
-    function toggleAttendance(studentId) {
-        let db = getData();
-        db.students = db.students.map(s => {
-            if (String(s.id) === String(studentId)) {
-                s.present = s.present === undefined ? false : !s.present;
-            }
-            return s;
-        });
-        saveData(db);
+    async function toggleAttendance(studentId) {
+        let student = db.students.find(s => String(s.id) === String(studentId));
+        if (!student) return;
+
+        const currentPresent = student.present !== false;
+        const newPresentState = !currentPresent;
+        const { error } = await supabaseClient
+            .from('students')
+            .update({ present: newPresentState })
+            .eq('id', studentId);
+
+        if (error) alert('Error updating attendance: ' + error.message);
+        else loadDataFromSupabase();
     }
 
-    function setCardStatus(studentId, cardType) {
-        let db = getData();
-        db.students = db.students.map(s => {
-            if (String(s.id) === String(studentId)) {
-                s.cardStatus = s.cardStatus === cardType ? 'none' : cardType;
-            }
-            return s;
-        });
-        saveData(db);
+    async function setCardStatus(studentId, cardType) {
+        let student = db.students.find(s => String(s.id) === String(studentId));
+        if (!student) return;
+
+        const newCardStatus = student.cardStatus === cardType ? 'none' : cardType;
+        const { error } = await supabaseClient
+            .from('students')
+            .update({ cardStatus: newCardStatus })
+            .eq('id', studentId);
+
+        if (error) alert('Error updating card status: ' + error.message);
+        else loadDataFromSupabase();
     }
 
-    function addClass() {
+    async function addClass() {
         let name = document.getElementById('new-class-name').value.trim();
         let time = document.getElementById('new-class-time').value.trim();
         if(!name || !time) return alert('Please enter both class name and time.');
         
-        let db = getData();
-        db.classes.push({ id: 'c_' + Date.now(), name, time });
-        document.getElementById('new-class-name').value = '';
-        document.getElementById('new-class-time').value = '';
-        saveData(db);
+        let newClass = { id: 'c_' + Date.now(), name, time };
+        const { error } = await supabaseClient.from('classes').insert([newClass]);
+
+        if (error) {
+            alert('Error adding class: ' + error.message);
+        } else {
+            document.getElementById('new-class-name').value = '';
+            document.getElementById('new-class-time').value = '';
+            loadDataFromSupabase();
+        }
     }
 
-    function deleteClass(classId) {
-        let db = getData();
-        db.classes = db.classes.filter(c => c.id !== classId);
-        db.students = db.students.filter(s => s.classId !== classId);
-        saveData(db);
+    async function deleteClass(classId) {
+        if (!confirm('Are you sure you want to delete this class and its associated students?')) return;
+        
+        await supabaseClient.from('students').delete().eq('classId', classId);
+        const { error } = await supabaseClient.from('classes').delete().eq('id', classId);
+
+        if (error) alert('Error deleting class: ' + error.message);
+        else loadDataFromSupabase();
     }
 
-    function addStudent() {
+    async function addStudent() {
         let id = document.getElementById('new-student-id').value.trim();
         let name = document.getElementById('new-student-name').value.trim();
         let phone = document.getElementById('new-student-phone').value.trim();
         let classId = document.getElementById('new-student-class').value;
         if(!id || !name || !classId) return alert('Please provide student ID, name, and select a class.');
 
-        let db = getData();
-        db.students.push({ id, name, classId, phone, arrived: false, cardStatus: 'none', present: true });
-        document.getElementById('new-student-id').value = '';
-        document.getElementById('new-student-name').value = '';
-        document.getElementById('new-student-phone').value = '';
-        saveData(db);
+        let newStudent = { id, name, classId, phone, arrived: false, cardStatus: 'none', present: true };
+        const { error } = await supabaseClient.from('students').insert([newStudent]);
+
+        if (error) {
+            alert('Error adding student: ' + error.message);
+        } else {
+            document.getElementById('new-student-id').value = '';
+            document.getElementById('new-student-name').value = '';
+            document.getElementById('new-student-phone').value = '';
+            loadDataFromSupabase();
+        }
     }
 
-    function deleteStudent(studentId) {
-        let db = getData();
-        db.students = db.students.filter(s => String(s.id) !== String(studentId));
-        saveData(db);
+    async function deleteStudent(studentId) {
+        const { error } = await supabaseClient.from('students').delete().eq('id', studentId);
+        if (error) alert('Error deleting student: ' + error.message);
+        else loadDataFromSupabase();
     }
 
-    function importFromSheetText() {
+    async function importFromSheetText() {
         let rawText = document.getElementById('bulk-sheet-input').value.trim();
         if (!rawText) return alert('Please paste the spreadsheet text first.');
 
         let lines = rawText.split('\n');
-        let db = getData();
         let currentClassId = null;
         let importedClassesCount = 0;
         let importedStudentsCount = 0;
 
-        lines.forEach(line => {
+        for (let line of lines) {
             let trimmed = line.trim();
-            if (!trimmed) return;
+            if (!trimmed) continue;
 
             let parts = trimmed.split(/[\t,]+/).map(p => p.trim());
 
@@ -499,11 +540,9 @@
                     currentClassId = existingClass.id;
                 } else {
                     currentClassId = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-                    db.classes.push({
-                        id: currentClassId,
-                        name: fullClassName,
-                        time: roomTime
-                    });
+                    let newClassObj = { id: currentClassId, name: fullClassName, time: roomTime };
+                    await supabaseClient.from('classes').insert([newClassObj]);
+                    db.classes.push(newClassObj);
                     importedClassesCount++;
                 }
             } 
@@ -521,9 +560,9 @@
                     }
                 }
 
-                let existingStudentIndex = db.students.findIndex(s => String(s.id) === String(id));
-                if (existingStudentIndex === -1) {
-                    db.students.push({
+                let existingStudent = db.students.find(s => String(s.id) === String(id));
+                if (!existingStudent) {
+                    let newStudentObj = {
                         id: id,
                         name: name,
                         classId: currentClassId,
@@ -531,22 +570,22 @@
                         arrived: false,
                         cardStatus: 'none',
                         present: true
-                    });
+                    };
+                    await supabaseClient.from('students').insert([newStudentObj]);
+                    db.students.push(newStudentObj);
                     importedStudentsCount++;
                 } else {
-                    db.students[existingStudentIndex].classId = currentClassId;
+                    await supabaseClient.from('students').update({ classId: currentClassId }).eq('id', id);
                 }
             }
-        });
+        }
 
-        saveData(db);
         document.getElementById('bulk-sheet-input').value = '';
+        await loadDataFromSupabase();
         alert(`Import Complete!\n- Classes Added: ${importedClassesCount}\n- Students Added: ${importedStudentsCount}`);
     }
 
     function render() {
-        let db = getData();
-
         let recSelect = document.getElementById('rec-class-filter');
         let teachSelect = document.getElementById('teach-class-filter');
         let newStuClassSelect = document.getElementById('new-student-class');
@@ -568,8 +607,8 @@
         if(currentRecVal) recSelect.value = currentRecVal;
         if(currentTeachVal) teachSelect.value = currentTeachVal;
 
-        // Sort students so present students come first, and absent students go to the end of the list
-        db.students.sort((a, b) => {
+        // Sort students so present students come first, and absent students go to the end
+        let sortedStudents = [...db.students].sort((a, b) => {
             let aPresent = a.present !== false ? 1 : 0;
             let bPresent = b.present !== false ? 1 : 0;
             return bPresent - aPresent;
@@ -579,7 +618,7 @@
         recList.innerHTML = '';
         let selectedRecClass = recSelect.value;
 
-        let filteredStudents = db.students.filter(s => selectedRecClass === 'ALL' || s.classId === selectedRecClass);
+        let filteredStudents = sortedStudents.filter(s => selectedRecClass === 'ALL' || s.classId === selectedRecClass);
         
         if(filteredStudents.length === 0) {
             recList.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">No students found.</p>';
@@ -614,7 +653,7 @@
         teachList.innerHTML = '';
         let selectedTeachClass = teachSelect.value;
 
-        let teacherStudents = db.students.filter(s => selectedTeachClass === 'ALL' || s.classId === selectedTeachClass);
+        let teacherStudents = sortedStudents.filter(s => selectedTeachClass === 'ALL' || s.classId === selectedTeachClass);
 
         if(teacherStudents.length === 0) {
             teachList.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">No students assigned to this class view.</p>';
@@ -622,7 +661,6 @@
 
         teacherStudents.forEach(student => {
             let isPresent = student.present !== false;
-            let cardLabel = student.cardStatus === 'card1' ? 'Card: Home Alone 🟢' : student.cardStatus === 'card2' ? 'Card: Collection Call 🟠' : 'Card: None ❌';
             let attendanceLabel = isPresent ? 'Attendance: Present 🟢' : 'Attendance: Absent 🔴';
             
             let div = document.createElement('div');
@@ -678,7 +716,9 @@
         });
     }
 
-    render();
+    // Initialize application on load
+    loadDataFromSupabase();
+    setupRealtimeListeners();
 </script>
 
 </body>
