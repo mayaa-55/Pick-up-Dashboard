@@ -353,6 +353,10 @@
                 <label for="rec-class-filter">Filter by Class & Dismissal Time:</label>
                 <select id="rec-class-filter" onchange="render()"></select>
             </div>
+            <div class="filter-group">
+                <label for="rec-search-input">Search Student (Name or ID):</label>
+                <input type="text" id="rec-search-input" class="form-control" placeholder="Type name or ID to quickly find student..." oninput="render()">
+            </div>
             <div id="reception-list"></div>
         </div>
 
@@ -661,7 +665,6 @@
             if (parts[0] && parts[0].startsWith('Room ')) {
                 let roomName = parts[0];
                 let rawTime = parts[1] || '';
-                // Prepend selected day to the time or check if day is already specified
                 let roomTime = (rawTime.toLowerCase().includes('friday') || rawTime.toLowerCase().includes('saturday')) 
                     ? rawTime 
                     : `${targetDay} ${rawTime}`;
@@ -730,6 +733,7 @@
         let studentListClassSelect = document.getElementById('student-list-class-filter');
         let studentListCardFilter = document.getElementById('student-list-card-filter');
         let studentListAttendanceFilter = document.getElementById('student-list-attendance-filter');
+        let recSearchInput = document.getElementById('rec-search-input');
 
         let currentRecVal = recSelect.value;
         let currentTeachVal = teachSelect.value;
@@ -737,6 +741,7 @@
         let currentStudentListClassVal = studentListClassSelect.value;
         let currentCardFilterVal = studentListCardFilter ? studentListCardFilter.value : 'ALL';
         let currentAttendanceFilterVal = studentListAttendanceFilter ? studentListAttendanceFilter.value : 'ALL';
+        let currentRecSearch = recSearchInput ? recSearchInput.value.trim().toLowerCase() : '';
 
         // Filter classes for dashboard based on selected day (Friday / Saturday)
         let dashClasses = db.classes.filter(c => {
@@ -806,7 +811,10 @@
             let matchesDay = (cObj.time || '').toLowerCase().includes(currentSelectedDay.toLowerCase());
             let isNotAbsent = s.present !== false;
             let matchesClass = selectedRecClass === 'ALL' || s.classId === selectedRecClass;
-            return matchesDay && isNotAbsent && matchesClass;
+            let matchesSearch = currentRecSearch === '' || 
+                                s.name.toLowerCase().includes(currentRecSearch) || 
+                                String(s.id).toLowerCase().includes(currentRecSearch);
+            return matchesDay && isNotAbsent && matchesClass && matchesSearch;
         });
         
         if(filteredRecStudents.length === 0) {
