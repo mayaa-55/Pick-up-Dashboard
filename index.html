@@ -104,11 +104,13 @@
             padding: 15px;
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            max-height: none;
+            overflow-y: visible;
         }
         @media (min-width: 900px) {
             .panel {
                 padding: 20px;
-                max-height: 80vh;
+                max-height: 85vh;
                 overflow-y: auto;
             }
         }
@@ -191,7 +193,7 @@
         .btn-arrive { background-color: var(--success); color: white; }
         .btn-dismiss { background-color: var(--danger); color: white; }
         .btn-add { background-color: var(--primary); color: white; width: 100%; margin-top: 5px; }
-        .btn-reset { background-color: var(--danger); color: white; width: 100%; margin-top: 10px; }
+        .btn-reset-small { background-color: var(--danger); color: white; padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; width: auto; }
         @media (min-width: 500px) {
             .btn-add { margin-top: 10px; padding: 10px; }
         }
@@ -341,6 +343,13 @@
         <div class="panel">
             <h2>Exit Door</h2>
             <div class="filter-group">
+                <label for="day-selector-dash">Select Day:</label>
+                <select id="day-selector-dash" class="form-control" onchange="onDayChangeDash()">
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                </select>
+            </div>
+            <div class="filter-group">
                 <label for="rec-class-filter">Filter by Class & Dismissal Time:</label>
                 <select id="rec-class-filter" onchange="render()"></select>
             </div>
@@ -367,6 +376,14 @@
                 <div class="filter-group" style="flex: 2; min-width: 180px; margin-bottom: 0;">
                     <label for="student-search-input">Search Student (Name or ID):</label>
                     <input type="text" id="student-search-input" class="form-control" placeholder="Type name or ID to search..." oninput="render()">
+                </div>
+                <div class="filter-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                    <label for="student-list-day-filter">Filter by Day:</label>
+                    <select id="student-list-day-filter" class="form-control" onchange="onDayChangeDirectory()">
+                        <option value="ALL">All Days</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                    </select>
                 </div>
                 <div class="filter-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
                     <label for="student-list-class-filter">Filter by Class:</label>
@@ -400,6 +417,13 @@
         <div class="panel" style="grid-column: 1 / -1; background: #e0e7ff; border: 1px dashed var(--primary);">
             <h2>🚀 Quick Google Sheet Importer</h2>
             <p style="font-size: 0.85rem; color: #4b5563;">Paste your copied rows from the Google Sheet here to automatically create classes and sort students:</p>
+            <div class="filter-group" style="max-width: 300px; margin-bottom: 8px;">
+                <label for="import-day-target">Target Day for Import:</label>
+                <select id="import-day-target" class="form-control">
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                </select>
+            </div>
             <textarea id="bulk-sheet-input" class="form-control" rows="5" placeholder="Paste sheet content here..."></textarea>
             <button class="btn-add" onclick="importFromSheetText()">Import Rooms & Students</button>
         </div>
@@ -407,25 +431,31 @@
         <div class="panel">
             <h2>Manage Classes & Times</h2>
             <input type="text" id="new-class-name" class="form-control" placeholder="Class Name (e.g., Room S10)">
-            <input type="text" id="new-class-time" class="form-control" placeholder="Dismissal Time (e.g., Fri 10:30-12:30)">
+            
+            <div class="filter-group">
+                <label for="new-class-day">Class Day:</label>
+                <select id="new-class-day" class="form-control">
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                </select>
+            </div>
+
+            <input type="text" id="new-class-time" class="form-control" placeholder="Dismissal Time (e.g., 10:30-12:30)">
             <button class="btn-add" onclick="addClass()">Add Class</button>
             <div style="margin-top: 15px;" id="classes-manager-list"></div>
         </div>
 
         <div class="panel">
-            <h2>Manage Students</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--bg); padding-bottom: 8px; margin-bottom: 10px;">
+                <h2 style="margin: 0; border-bottom: none; padding-bottom: 0;">Manage Students</h2>
+                <button class="btn-reset-small" onclick="resetAllData()">Reset All Data</button>
+            </div>
             <input type="text" id="new-student-id" class="form-control" placeholder="Student ID (e.g., 61589341)">
             <input type="text" id="new-student-name" class="form-control" placeholder="Student Full Name">
             <input type="text" id="new-student-phone" class="form-control" placeholder="Parent Phone">
             <select id="new-student-class" class="form-control"></select>
             <button class="btn-add" onclick="addStudent()">Add Student</button>
             <div style="margin-top: 15px;" id="students-manager-list"></div>
-            
-            <div style="margin-top: 30px; border-top: 2px solid var(--bg); padding-top: 15px;">
-                <h2 style="color: var(--danger);">End of Day Reset</h2>
-                <p style="font-size: 0.85rem; color: #4b5563;">Clear all classes and students data to prepare for the next day easily:</p>
-                <button class="btn-reset" onclick="resetAllData()">Reset All Data (End of Day)</button>
-            </div>
         </div>
     </div>
 </div>
@@ -494,6 +524,14 @@
         render();
     }
 
+    function onDayChangeDash() {
+        render();
+    }
+
+    function onDayChangeDirectory() {
+        render();
+    }
+
     async function toggleArrival(studentId) {
         let student = db.students.find(s => String(s.id) === String(studentId));
         if (!student) return;
@@ -512,7 +550,6 @@
         let student = db.students.find(s => String(s.id) === String(studentId));
         if (!student) return;
 
-        // Toggle off if clicking the already selected attendance state, otherwise set it
         const newState = student.present === isPresent ? null : isPresent;
 
         const { error } = await supabaseClient
@@ -539,9 +576,11 @@
 
     async function addClass() {
         let name = document.getElementById('new-class-name').value.trim();
-        let time = document.getElementById('new-class-time').value.trim();
-        if(!name || !time) return alert('Please enter both class name and time.');
+        let day = document.getElementById('new-class-day').value;
+        let timeInput = document.getElementById('new-class-time').value.trim();
+        if(!name || !timeInput) return alert('Please enter both class name and time.');
         
+        let time = `${day} ${timeInput}`;
         let newClass = { id: 'c_' + Date.now(), name, time };
         const { error } = await supabaseClient.from('classes').insert([newClass]);
 
@@ -591,12 +630,12 @@
     }
 
     async function resetAllData() {
-        if (!confirm('⚠️ Are you sure you want to reset and delete ALL classes and students for the end of the day? This cannot be undone!')) return;
+        if (!confirm('⚠️ Are you sure you want to reset and delete ALL classes and students? This cannot be undone!')) return;
         
         try {
             await supabaseClient.from('students').delete().neq('id', '');
             await supabaseClient.from('classes').delete().neq('id', '');
-            alert('All data has been successfully reset for the next day!');
+            alert('All data has been successfully reset!');
             loadDataFromSupabase();
         } catch (err) {
             alert('Error resetting data: ' + err.message);
@@ -605,6 +644,7 @@
 
     async function importFromSheetText() {
         let rawText = document.getElementById('bulk-sheet-input').value.trim();
+        let targetDay = document.getElementById('import-day-target').value;
         if (!rawText) return alert('Please paste the spreadsheet text first.');
 
         let lines = rawText.split('\n');
@@ -620,7 +660,12 @@
 
             if (parts[0] && parts[0].startsWith('Room ')) {
                 let roomName = parts[0];
-                let roomTime = parts[1] || '';
+                let rawTime = parts[1] || '';
+                // Prepend selected day to the time or check if day is already specified
+                let roomTime = (rawTime.toLowerCase().includes('friday') || rawTime.toLowerCase().includes('saturday')) 
+                    ? rawTime 
+                    : `${targetDay} ${rawTime}`;
+
                 let courseOrTeacher = parts.slice(2).join(' - ');
                 let fullClassName = courseOrTeacher ? `${roomName} (${courseOrTeacher})` : roomName;
 
@@ -671,38 +716,65 @@
 
         document.getElementById('bulk-sheet-input').value = '';
         await loadDataFromSupabase();
-        alert(`Import Complete!\n- Classes Added: ${importedClassesCount}\n- Students Added: ${importedStudentsCount}`);
+        alert(`Import Complete for ${targetDay}!\n- Classes Added: ${importedClassesCount}\n- Students Added: ${importedStudentsCount}`);
     }
 
     function render() {
+        let dayDashSelect = document.getElementById('day-selector-dash');
+        let currentSelectedDay = dayDashSelect ? dayDashSelect.value : 'Friday';
+
         let recSelect = document.getElementById('rec-class-filter');
         let teachSelect = document.getElementById('teach-class-filter');
         let newStuClassSelect = document.getElementById('new-student-class');
+        let studentListDayFilter = document.getElementById('student-list-day-filter');
         let studentListClassSelect = document.getElementById('student-list-class-filter');
         let studentListCardFilter = document.getElementById('student-list-card-filter');
         let studentListAttendanceFilter = document.getElementById('student-list-attendance-filter');
 
         let currentRecVal = recSelect.value;
         let currentTeachVal = teachSelect.value;
+        let currentStudentListDayVal = studentListDayFilter ? studentListDayFilter.value : 'ALL';
         let currentStudentListClassVal = studentListClassSelect.value;
         let currentCardFilterVal = studentListCardFilter ? studentListCardFilter.value : 'ALL';
         let currentAttendanceFilterVal = studentListAttendanceFilter ? studentListAttendanceFilter.value : 'ALL';
 
-        recSelect.innerHTML = '<option value="ALL">-- All Students --</option>';
-        teachSelect.innerHTML = '<option value="ALL">-- All Students --</option>';
-        newStuClassSelect.innerHTML = '';
-        studentListClassSelect.innerHTML = '<option value="ALL">-- All Classes --</option>';
+        // Filter classes for dashboard based on selected day (Friday / Saturday)
+        let dashClasses = db.classes.filter(c => {
+            let timeStr = (c.time || '').toLowerCase();
+            return timeStr.includes(currentSelectedDay.toLowerCase());
+        });
 
-        db.classes.forEach(c => {
+        recSelect.innerHTML = '<option value="ALL">-- All Students in ' + currentSelectedDay + ' --</option>';
+        teachSelect.innerHTML = '<option value="ALL">-- All Students in ' + currentSelectedDay + ' --</option>';
+
+        dashClasses.forEach(c => {
             let label = `${c.name} (${c.time})`;
             recSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
             teachSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
+        });
+
+        // New student dropdown lists classes filtered by the selected import day or all classes
+        newStuClassSelect.innerHTML = '';
+        db.classes.forEach(c => {
+            let label = `${c.name} (${c.time})`;
             newStuClassSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
+        });
+
+        // Students directory day filtering
+        let directoryClasses = db.classes;
+        if (currentStudentListDayVal !== 'ALL') {
+            directoryClasses = db.classes.filter(c => (c.time || '').toLowerCase().includes(currentStudentListDayVal.toLowerCase()));
+        }
+
+        studentListClassSelect.innerHTML = '<option value="ALL">-- All Classes --</option>';
+        directoryClasses.forEach(c => {
+            let label = `${c.name} (${c.time})`;
             studentListClassSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
         });
 
         if(currentRecVal) recSelect.value = currentRecVal;
         if(currentTeachVal) teachSelect.value = currentTeachVal;
+        if(studentListDayFilter && currentStudentListDayVal) studentListDayFilter.value = currentStudentListDayVal;
         if(currentStudentListClassVal) studentListClassSelect.value = currentStudentListClassVal;
         if(studentListCardFilter && currentCardFilterVal) studentListCardFilter.value = currentCardFilterVal;
         if(studentListAttendanceFilter && currentAttendanceFilterVal) studentListAttendanceFilter.value = currentAttendanceFilterVal;
@@ -723,19 +795,22 @@
             return 0;
         });
 
-        // 1. RENDER RECEPTION LIST (Only students who are NOT explicitly marked absent)
+        // 1. RENDER RECEPTION LIST
         let recList = document.getElementById('reception-list');
         recList.innerHTML = '';
         let selectedRecClass = recSelect.value;
 
         let filteredRecStudents = sortedStudents.filter(s => {
+            let cObj = db.classes.find(c => c.id === s.classId);
+            if (!cObj) return false;
+            let matchesDay = (cObj.time || '').toLowerCase().includes(currentSelectedDay.toLowerCase());
             let isNotAbsent = s.present !== false;
             let matchesClass = selectedRecClass === 'ALL' || s.classId === selectedRecClass;
-            return isNotAbsent && matchesClass;
+            return matchesDay && isNotAbsent && matchesClass;
         });
         
         if(filteredRecStudents.length === 0) {
-            recList.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">No active students found.</p>';
+            recList.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">No active students found for ' + currentSelectedDay + '.</p>';
         }
 
         filteredRecStudents.forEach(student => {
@@ -772,9 +847,12 @@
         let selectedTeachClass = teachSelect.value;
 
         let teacherStudents = sortedStudents.filter(s => {
+            let cObj = db.classes.find(c => c.id === s.classId);
+            if (!cObj) return false;
+            let matchesDay = (cObj.time || '').toLowerCase().includes(currentSelectedDay.toLowerCase());
             let isNotAbsent = s.present !== false;
             let matchesClass = selectedTeachClass === 'ALL' || s.classId === selectedTeachClass;
-            return isNotAbsent && matchesClass;
+            return matchesDay && isNotAbsent && matchesClass;
         });
 
         if(teacherStudents.length === 0) {
@@ -819,11 +897,16 @@
         let allStudentsListEl = document.getElementById('all-students-list');
         allStudentsListEl.innerHTML = '';
         let searchQuery = document.getElementById('student-search-input').value.trim().toLowerCase();
+        let selectedListDay = studentListDayFilter ? studentListDayFilter.value : 'ALL';
         let selectedListClass = studentListClassSelect.value;
         let cardFilter = studentListCardFilter ? studentListCardFilter.value : 'ALL';
         let attendanceFilter = studentListAttendanceFilter ? studentListAttendanceFilter.value : 'ALL';
 
         let filteredDirectoryStudents = sortedStudents.filter(s => {
+            let cObj = db.classes.find(c => c.id === s.classId);
+            if (!cObj) return false;
+
+            let matchesDay = selectedListDay === 'ALL' || (cObj.time || '').toLowerCase().includes(selectedListDay.toLowerCase());
             let matchesClass = selectedListClass === 'ALL' || s.classId === selectedListClass;
             let matchesSearch = searchQuery === '' || 
                                 s.name.toLowerCase().includes(searchQuery) || 
@@ -837,7 +920,7 @@
                 matchesAttendance = s.present === false;
             }
 
-            return matchesClass && matchesSearch && matchesCard && matchesAttendance;
+            return matchesDay && matchesClass && matchesSearch && matchesCard && matchesAttendance;
         });
 
         if(filteredDirectoryStudents.length === 0) {
