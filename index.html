@@ -1009,8 +1009,8 @@
         if (!student) return;
         setBtnLoading(btn);
 
-        let currentStatus = student.cardStatus || 'none';
-        let newStatus = (currentStatus === cardType) ? 'none' : cardType;
+        let currentStatus = student.cardStatus;
+        let newStatus = (currentStatus === cardType) ? null : cardType;
 
         const { error } = await supabaseClient
             .from('students')
@@ -1062,7 +1062,7 @@
         if(!id || !name || !classId) return alert('Please provide student ID, name, and select a class.');
 
         setBtnLoading(btn);
-        let newStudent = { id, name, classId, phone, arrived: false, cardStatus: 'none', present: null };
+        let newStudent = { id, name, classId, phone, arrived: false, cardStatus: null, present: null };
         const { error } = await supabaseClient.from('students').insert([newStudent]);
 
         if (error) {
@@ -1160,7 +1160,7 @@
                         classId: currentClassId,
                         phone: phone,
                         arrived: false,
-                        cardStatus: 'none',
+                        cardStatus: null,
                         present: null
                     };
                     await supabaseClient.from('students').insert([newStudentObj]);
@@ -1192,6 +1192,18 @@
         if (status === 'card2') return `<span class="status-badge badge-card2">${icon('flag')}Green Card</span>`;
         if (status === 'homealone') return `<span class="status-badge badge-homealone">${icon('home')}Home Alone</span>`;
         return '';
+    }
+
+    // True once a card choice has been explicitly made — including "No Card" — but not for the untouched default.
+    function hasCardDecision(student) {
+        return student.cardStatus === 'card1' || student.cardStatus === 'card2' ||
+               student.cardStatus === 'homealone' || student.cardStatus === 'no_card';
+    }
+
+    // Buckets any card value into one of the 4 filter options: real cards keep their own value,
+    // everything else (unset default, legacy 'none', explicit 'no_card') buckets under 'none'.
+    function cardFilterBucket(status) {
+        return (status === 'card1' || status === 'card2' || status === 'homealone') ? status : 'none';
     }
 
     function emptyStateHTML(iconName, message) {
@@ -1418,7 +1430,7 @@
             let matchesSearch = searchQuery === '' || 
                                 s.name.toLowerCase().includes(searchQuery) || 
                                 String(s.id).toLowerCase().includes(searchQuery);
-            let matchesCard = cardFilter === 'ALL' || (s.cardStatus || 'none') === cardFilter;
+            let matchesCard = cardFilter === 'ALL' || cardFilterBucket(s.cardStatus) === cardFilter;
             
             let matchesAttendance = true;
             if (attendanceFilter === 'PRESENT') {
@@ -1435,8 +1447,8 @@
         // - Marking a student Present waits for a card choice before it drops to the bottom.
         // - Picking a card alone waits for an attendance choice before it drops to the bottom.
         filteredDirectoryStudents.sort((a, b) => {
-            let aDone = a.present === false || (a.present === true && a.cardStatus && a.cardStatus !== 'none');
-            let bDone = b.present === false || (b.present === true && b.cardStatus && b.cardStatus !== 'none');
+            let aDone = a.present === false || (a.present === true && hasCardDecision(a));
+            let bDone = b.present === false || (b.present === true && hasCardDecision(b));
             if (aDone && !bDone) return 1;
             if (!aDone && bDone) return -1;
             return String(a.name || '').localeCompare(String(b.name || ''));
@@ -1453,7 +1465,7 @@
             let className = cObj ? `${cObj.name} - ${cObj.time}` : 'Unassigned';
             let isPresent = student.present === true;
             let isAbsent = student.present === false;
-            let cardStatus = student.cardStatus || 'none';
+            let cardStatus = student.cardStatus || null;
 
             let div = document.createElement('div');
             div.className = 'student-card';
@@ -1474,7 +1486,7 @@
                     <div class="card-selector-container${isAbsent ? ' card-selector-disabled' : ''}">
                         <span>${icon('flag')}Card Choice${isAbsent ? ' (n/a — absent)' : ''}</span>
                         <div class="card-selector">
-                            <button class="card-btn" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'none', this)">${icon('x')}No Card</button>
+                            <button class="card-btn ${cardStatus === 'no_card' ? 'active-card-none' : ''}" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'no_card', this)">${icon('x')}No Card</button>
                             <button class="card-btn ${cardStatus === 'card1' ? 'active-card-1' : ''}" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'card1', this)">${icon('phone')}Collection Call</button>
                             <button class="card-btn ${cardStatus === 'card2' ? 'active-card-2' : ''}" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'card2', this)">${icon('flag')}Green Card</button>
                             <button class="card-btn ${cardStatus === 'homealone' ? 'active-card-homealone' : ''}" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'homealone', this)">${icon('home')}Home Alone</button>
