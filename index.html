@@ -363,6 +363,12 @@
             width: auto;
         }
         .card-btn .icon { width: 12px; height: 12px; }
+        .card-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            background: var(--bg);
+        }
+        .card-selector-container.card-selector-disabled > span { color: var(--danger); }
         .card-btn.active-card-none {
             background: var(--text-muted);
             color: white;
@@ -1424,11 +1430,13 @@
             return matchesDay && matchesClass && matchesSearch && matchesCard && matchesAttendance;
         });
 
-        // Keep a stable, name-based order. Only drop a student to the bottom once
-        // BOTH a card choice (not "No Card") AND an attendance status have been set.
+        // Keep a stable, name-based order.
+        // - Marking a student Absent sends them to the bottom right away (no card needed).
+        // - Marking a student Present waits for a card choice before it drops to the bottom.
+        // - Picking a card alone waits for an attendance choice before it drops to the bottom.
         filteredDirectoryStudents.sort((a, b) => {
-            let aDone = (a.cardStatus && a.cardStatus !== 'none') && (a.present === true || a.present === false);
-            let bDone = (b.cardStatus && b.cardStatus !== 'none') && (b.present === true || b.present === false);
+            let aDone = a.present === false || (a.present === true && a.cardStatus && a.cardStatus !== 'none');
+            let bDone = b.present === false || (b.present === true && b.cardStatus && b.cardStatus !== 'none');
             if (aDone && !bDone) return 1;
             if (!aDone && bDone) return -1;
             return String(a.name || '').localeCompare(String(b.name || ''));
@@ -1463,13 +1471,13 @@
                     </div>
                 </div>
                 <div class="control-row directory-controls">
-                    <div class="card-selector-container">
-                        <span>${icon('flag')}Card Choice</span>
+                    <div class="card-selector-container${isAbsent ? ' card-selector-disabled' : ''}">
+                        <span>${icon('flag')}Card Choice${isAbsent ? ' (n/a — absent)' : ''}</span>
                         <div class="card-selector">
-                            <button class="card-btn" onclick="setCardStatus('${student.id}', 'none', this)">${icon('x')}No Card</button>
-                            <button class="card-btn ${cardStatus === 'card1' ? 'active-card-1' : ''}" onclick="setCardStatus('${student.id}', 'card1', this)">${icon('phone')}Collection Call</button>
-                            <button class="card-btn ${cardStatus === 'card2' ? 'active-card-2' : ''}" onclick="setCardStatus('${student.id}', 'card2', this)">${icon('flag')}Green Card</button>
-                            <button class="card-btn ${cardStatus === 'homealone' ? 'active-card-homealone' : ''}" onclick="setCardStatus('${student.id}', 'homealone', this)">${icon('home')}Home Alone</button>
+                            <button class="card-btn" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'none', this)">${icon('x')}No Card</button>
+                            <button class="card-btn ${cardStatus === 'card1' ? 'active-card-1' : ''}" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'card1', this)">${icon('phone')}Collection Call</button>
+                            <button class="card-btn ${cardStatus === 'card2' ? 'active-card-2' : ''}" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'card2', this)">${icon('flag')}Green Card</button>
+                            <button class="card-btn ${cardStatus === 'homealone' ? 'active-card-homealone' : ''}" ${isAbsent ? 'disabled' : ''} onclick="setCardStatus('${student.id}', 'homealone', this)">${icon('home')}Home Alone</button>
                         </div>
                     </div>
                     <div class="attendance-group">
