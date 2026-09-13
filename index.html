@@ -342,6 +342,63 @@
         @media(min-width: 500px) {
             .btn-delete { width: auto; padding: 4px 8px; font-size: 0.75rem; }
         }
+
+        /* --- Loading states (added, does not alter existing styles) --- */
+        .list-container { position: relative; min-height: 50px; }
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.75);
+            display: none;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 18px;
+            border-radius: 8px;
+            z-index: 5;
+            backdrop-filter: blur(1px);
+        }
+        .loading-overlay.active { display: flex; }
+        .loading-spinner {
+            width: 26px;
+            height: 26px;
+            border: 3px solid #e5e7eb;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin-loading 0.7s linear infinite;
+            position: sticky;
+            top: 18px;
+        }
+        @keyframes spin-loading { to { transform: rotate(360deg); } }
+
+        button.btn-loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+            position: relative;
+            color: transparent !important;
+        }
+        button.btn-loading::after {
+            content: "";
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            top: 50%;
+            left: 50%;
+            margin: -8px 0 0 -8px;
+            border: 2px solid rgba(255, 255, 255, 0.45);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin-loading 0.6s linear infinite;
+        }
+        button.btn-loading.card-btn::after,
+        button.btn-loading.att-btn::after {
+            border: 2px solid rgba(55, 65, 81, 0.25);
+            border-top-color: #374151;
+        }
+        button.btn-loading.btn-delete::after {
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            border-top-color: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -370,13 +427,16 @@
             </div>
             <div class="filter-group">
                 <label for="rec-class-filter">Filter by Class & Dismissal Time:</label>
-                <select id="rec-class-filter" onchange="render()"></select>
+                <select id="rec-class-filter" onchange="handleFilterChange('reception-list-loading')"></select>
             </div>
             <div class="filter-group">
                 <label for="rec-search-input">Search Student (Name or ID):</label>
-                <input type="text" id="rec-search-input" class="form-control" placeholder="Type name or ID to quickly find student..." oninput="render()">
+                <input type="text" id="rec-search-input" class="form-control" placeholder="Type name or ID to quickly find student..." oninput="handleSearchInput('reception-list-loading', 'reception')">
             </div>
-            <div id="reception-list"></div>
+            <div class="list-container">
+                <div id="reception-list"></div>
+                <div id="reception-list-loading" class="loading-overlay"><div class="loading-spinner"></div></div>
+            </div>
         </div>
     </div>
 
@@ -393,10 +453,13 @@
             </div>
             <div class="filter-group">
                 <label for="teach-class-filter">Select Your Class:</label>
-                <select id="teach-class-filter" onchange="render()"></select>
+                <select id="teach-class-filter" onchange="handleFilterChange('teacher-list-loading')"></select>
             </div>
             <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0;">Real-time notifications for your class:</p>
-            <div id="teacher-list"></div>
+            <div class="list-container">
+                <div id="teacher-list"></div>
+                <div id="teacher-list-loading" class="loading-overlay"><div class="loading-spinner"></div></div>
+            </div>
         </div>
     </div>
 
@@ -407,7 +470,7 @@
             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
                 <div class="filter-group" style="flex: 2; min-width: 180px; margin-bottom: 0;">
                     <label for="student-search-input">Search Student (Name or ID):</label>
-                    <input type="text" id="student-search-input" class="form-control" placeholder="Type name or ID to search..." oninput="render()">
+                    <input type="text" id="student-search-input" class="form-control" placeholder="Type name or ID to search..." oninput="handleSearchInput('all-students-list-loading', 'students')">
                 </div>
                 <div class="filter-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
                     <label for="student-list-day-filter">Filter by Day:</label>
@@ -419,11 +482,11 @@
                 </div>
                 <div class="filter-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
                     <label for="student-list-class-filter">Filter by Class:</label>
-                    <select id="student-list-class-filter" onchange="render()"></select>
+                    <select id="student-list-class-filter" onchange="handleFilterChange('all-students-list-loading')"></select>
                 </div>
                 <div class="filter-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
                     <label for="student-list-card-filter">Filter by Card:</label>
-                    <select id="student-list-card-filter" onchange="render()">
+                    <select id="student-list-card-filter" onchange="handleFilterChange('all-students-list-loading')">
                         <option value="ALL">All Cards</option>
                         <option value="none">No Card</option>
                         <option value="card1">Collection Call</option>
@@ -433,14 +496,17 @@
                 </div>
                 <div class="filter-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
                     <label for="student-list-attendance-filter">Status Filter:</label>
-                    <select id="student-list-attendance-filter" onchange="render()">
+                    <select id="student-list-attendance-filter" onchange="handleFilterChange('all-students-list-loading')">
                         <option value="ALL">All Status</option>
                         <option value="PRESENT">Present</option>
                         <option value="ABSENT">Absent</option>
                     </select>
                 </div>
             </div>
-            <div id="all-students-list"></div>
+            <div class="list-container">
+                <div id="all-students-list"></div>
+                <div id="all-students-list-loading" class="loading-overlay"><div class="loading-spinner"></div></div>
+            </div>
         </div>
     </div>
 
@@ -457,7 +523,7 @@
                 </select>
             </div>
             <textarea id="bulk-sheet-input" class="form-control" rows="5" placeholder="Paste sheet content here..."></textarea>
-            <button class="btn-add" onclick="importFromSheetText()">Import Rooms & Students</button>
+            <button class="btn-add" onclick="importFromSheetText(this)">Import Rooms & Students</button>
         </div>
 
         <div class="panel">
@@ -473,21 +539,27 @@
             </div>
 
             <input type="text" id="new-class-time" class="form-control" placeholder="Dismissal Time (e.g., 10:30-12:30)">
-            <button class="btn-add" onclick="addClass()">Add Class</button>
-            <div style="margin-top: 15px;" id="classes-manager-list"></div>
+            <button class="btn-add" onclick="addClass(this)">Add Class</button>
+            <div class="list-container" style="margin-top: 15px;">
+                <div id="classes-manager-list"></div>
+                <div id="classes-manager-list-loading" class="loading-overlay"><div class="loading-spinner"></div></div>
+            </div>
         </div>
 
         <div class="panel">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--bg); padding-bottom: 8px; margin-bottom: 10px;">
                 <h2 style="margin: 0; border-bottom: none; padding-bottom: 0;">Manage Students</h2>
-                <button class="btn-reset-small" onclick="resetAllData()">Reset All Data</button>
+                <button class="btn-reset-small" onclick="resetAllData(this)">Reset All Data</button>
             </div>
             <input type="text" id="new-student-id" class="form-control" placeholder="Student ID (e.g., 61589341)">
             <input type="text" id="new-student-name" class="form-control" placeholder="Student Full Name">
             <input type="text" id="new-student-phone" class="form-control" placeholder="Parent Phone">
             <select id="new-student-class" class="form-control"></select>
-            <button class="btn-add" onclick="addStudent()">Add Student</button>
-            <div style="margin-top: 15px;" id="students-manager-list"></div>
+            <button class="btn-add" onclick="addStudent(this)">Add Student</button>
+            <div class="list-container" style="margin-top: 15px;">
+                <div id="students-manager-list"></div>
+                <div id="students-manager-list-loading" class="loading-overlay"><div class="loading-spinner"></div></div>
+            </div>
         </div>
     </div>
 </div>
@@ -503,6 +575,52 @@
         classes: [],
         students: []
     };
+
+    // --- Loading state helpers (content spinners + button spinners) ---
+    const SEARCH_DEBOUNCE_MS = 450;   // delay before searching while typing
+    const FILTER_LOADING_MS = 250;    // brief loading state for filter/tab changes
+    const searchTimers = {};
+
+    function showContentLoading(loadingId) {
+        let el = document.getElementById(loadingId);
+        if (el) el.classList.add('active');
+    }
+
+    function hideContentLoading(loadingId) {
+        let el = document.getElementById(loadingId);
+        if (el) el.classList.remove('active');
+    }
+
+    // Debounced search: shows the spinner immediately, waits for typing to pause, then renders
+    function handleSearchInput(loadingId, key) {
+        showContentLoading(loadingId);
+        clearTimeout(searchTimers[key]);
+        searchTimers[key] = setTimeout(() => {
+            render();
+            hideContentLoading(loadingId);
+        }, SEARCH_DEBOUNCE_MS);
+    }
+
+    // Filter / day dropdowns: brief loading state before re-rendering
+    function handleFilterChange(loadingId) {
+        showContentLoading(loadingId);
+        setTimeout(() => {
+            render();
+            hideContentLoading(loadingId);
+        }, FILTER_LOADING_MS);
+    }
+
+    function setBtnLoading(btn) {
+        if (!btn) return;
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+    }
+
+    function clearBtnLoading(btn) {
+        if (!btn) return;
+        btn.classList.remove('btn-loading');
+        btn.disabled = false;
+    }
 
     async function loadDataFromSupabase() {
         try {
@@ -574,24 +692,39 @@
             el.style.display = 'grid';
             document.getElementById('tab-mgr').classList.add('active');
         }
-        render();
+
+        // Show a brief loading state over the content of the tab we just switched to
+        let tabLoadingIds = {
+            reception: ['reception-list-loading'],
+            teacher: ['teacher-list-loading'],
+            students: ['all-students-list-loading'],
+            manager: ['classes-manager-list-loading', 'students-manager-list-loading']
+        }[viewName] || [];
+
+        tabLoadingIds.forEach(showContentLoading);
+        clearTimeout(switchView._timer);
+        switchView._timer = setTimeout(() => {
+            render();
+            tabLoadingIds.forEach(hideContentLoading);
+        }, FILTER_LOADING_MS);
     }
 
     function onDayChangeDash() {
-        render();
+        handleFilterChange('reception-list-loading');
     }
 
     function onDayChangeTeach() {
-        render();
+        handleFilterChange('teacher-list-loading');
     }
 
     function onDayChangeDirectory() {
-        render();
+        handleFilterChange('all-students-list-loading');
     }
 
-    async function toggleArrival(studentId) {
+    async function toggleArrival(studentId, btn) {
         let student = db.students.find(s => String(s.id) === String(studentId));
         if (!student) return;
+        setBtnLoading(btn);
 
         const newArrivedState = !student.arrived;
         const { error } = await supabaseClient
@@ -599,23 +732,25 @@
             .update({ arrived: newArrivedState })
             .eq('id', studentId);
 
-        if (error) alert('Error updating arrival: ' + error.message);
-        else loadDataFromSupabase();
+        if (error) { alert('Error updating arrival: ' + error.message); clearBtnLoading(btn); }
+        else loadDataFromSupabase(); // re-render replaces the button, clearing its loading state
     }
 
-    async function dismissStudent(studentId) {
+    async function dismissStudent(studentId, btn) {
+        setBtnLoading(btn);
         const { error } = await supabaseClient
             .from('students')
             .delete()
             .eq('id', studentId);
 
-        if (error) alert('Error dismissing student: ' + error.message);
+        if (error) { alert('Error dismissing student: ' + error.message); clearBtnLoading(btn); }
         else loadDataFromSupabase();
     }
 
-    async function setAttendance(studentId, isPresent) {
+    async function setAttendance(studentId, isPresent, btn) {
         let student = db.students.find(s => String(s.id) === String(studentId));
         if (!student) return;
+        setBtnLoading(btn);
 
         const newState = student.present === isPresent ? null : isPresent;
 
@@ -624,96 +759,109 @@
             .update({ present: newState })
             .eq('id', studentId);
 
-        if (error) alert('Error updating attendance: ' + error.message);
+        if (error) { alert('Error updating attendance: ' + error.message); clearBtnLoading(btn); }
         else loadDataFromSupabase();
     }
 
-    async function setCardStatus(studentId, cardType) {
+    async function setCardStatus(studentId, cardType, btn) {
         let student = db.students.find(s => String(s.id) === String(studentId));
         if (!student) return;
+        setBtnLoading(btn);
 
         const { error } = await supabaseClient
             .from('students')
             .update({ cardStatus: cardType })
             .eq('id', studentId);
 
-        if (error) alert('Error updating card status: ' + error.message);
+        if (error) { alert('Error updating card status: ' + error.message); clearBtnLoading(btn); }
         else loadDataFromSupabase();
     }
 
-    async function addClass() {
+    async function addClass(btn) {
         let name = document.getElementById('new-class-name').value.trim();
         let day = document.getElementById('new-class-day').value;
         let timeInput = document.getElementById('new-class-time').value.trim();
         if(!name || !timeInput) return alert('Please enter both class name and time.');
-        
+
+        setBtnLoading(btn);
         let time = `${day} ${timeInput}`;
         let newClass = { id: 'c_' + Date.now(), name, time };
         const { error } = await supabaseClient.from('classes').insert([newClass]);
 
         if (error) {
             alert('Error adding class: ' + error.message);
+            clearBtnLoading(btn);
         } else {
             document.getElementById('new-class-name').value = '';
             document.getElementById('new-class-time').value = '';
-            loadDataFromSupabase();
+            await loadDataFromSupabase();
+            clearBtnLoading(btn);
         }
     }
 
-    async function deleteClass(classId) {
+    async function deleteClass(classId, btn) {
         if (!confirm('Are you sure you want to delete this class and its associated students?')) return;
-        
+        setBtnLoading(btn);
+
         await supabaseClient.from('students').delete().eq('classId', classId);
         const { error } = await supabaseClient.from('classes').delete().eq('id', classId);
 
-        if (error) alert('Error deleting class: ' + error.message);
-        else loadDataFromSupabase();
+        if (error) { alert('Error deleting class: ' + error.message); clearBtnLoading(btn); }
+        else loadDataFromSupabase(); // re-render replaces the row, clearing its loading state
     }
 
-    async function addStudent() {
+    async function addStudent(btn) {
         let id = document.getElementById('new-student-id').value.trim();
         let name = document.getElementById('new-student-name').value.trim();
         let phone = document.getElementById('new-student-phone').value.trim();
         let classId = document.getElementById('new-student-class').value;
         if(!id || !name || !classId) return alert('Please provide student ID, name, and select a class.');
 
+        setBtnLoading(btn);
         let newStudent = { id, name, classId, phone, arrived: false, cardStatus: 'none', present: null };
         const { error } = await supabaseClient.from('students').insert([newStudent]);
 
         if (error) {
             alert('Error adding student: ' + error.message);
+            clearBtnLoading(btn);
         } else {
             document.getElementById('new-student-id').value = '';
             document.getElementById('new-student-name').value = '';
             document.getElementById('new-student-phone').value = '';
-            loadDataFromSupabase();
+            await loadDataFromSupabase();
+            clearBtnLoading(btn);
         }
     }
 
-    async function deleteStudent(studentId) {
+    async function deleteStudent(studentId, btn) {
+        setBtnLoading(btn);
         const { error } = await supabaseClient.from('students').delete().eq('id', studentId);
-        if (error) alert('Error deleting student: ' + error.message);
+        if (error) { alert('Error deleting student: ' + error.message); clearBtnLoading(btn); }
         else loadDataFromSupabase();
     }
 
-    async function resetAllData() {
+    async function resetAllData(btn) {
         if (!confirm('⚠️ Are you sure you want to reset and delete ALL classes and students? This cannot be undone!')) return;
-        
+        setBtnLoading(btn);
+
         try {
             await supabaseClient.from('students').delete().neq('id', '');
             await supabaseClient.from('classes').delete().neq('id', '');
             alert('All data has been successfully reset!');
-            loadDataFromSupabase();
+            await loadDataFromSupabase();
         } catch (err) {
             alert('Error resetting data: ' + err.message);
+        } finally {
+            clearBtnLoading(btn);
         }
     }
 
-    async function importFromSheetText() {
+    async function importFromSheetText(btn) {
         let rawText = document.getElementById('bulk-sheet-input').value.trim();
         let targetDay = document.getElementById('import-day-target').value;
         if (!rawText) return alert('Please paste the spreadsheet text first.');
 
+        setBtnLoading(btn);
         let lines = rawText.split('\n');
         let currentClassId = null;
         let importedClassesCount = 0;
@@ -782,6 +930,7 @@
 
         document.getElementById('bulk-sheet-input').value = '';
         await loadDataFromSupabase();
+        clearBtnLoading(btn);
         alert(`Import Complete for ${targetDay}!\n- Classes Added: ${importedClassesCount}\n- Students Added: ${importedStudentsCount}`);
     }
 
@@ -918,7 +1067,7 @@
                     <span>ID: ${student.id} | Class: ${className} | Phone: ${student.phone || 'N/A'}</span>
                     ${cardBadgeHTML}
                 </div>
-                <button class="btn-arrive" style="background-color: ${student.arrived ? '#6b7280' : '#10b981'}" onclick="toggleArrival('${student.id}')">
+                <button class="btn-arrive" style="background-color: ${student.arrived ? '#6b7280' : '#10b981'}" onclick="toggleArrival('${student.id}', this)">
                     ${student.arrived ? 'Parent Here ✓' : 'Parent Arrived'}
                 </button>
             `;
@@ -976,7 +1125,7 @@
                     </div>
                     ${statusBadgeHTML}
                 </div>
-                ${student.arrived ? `<button class="btn-dismiss" onclick="dismissStudent('${student.id}')">Dismiss & Remove</button>` : ''}
+                ${student.arrived ? `<button class="btn-dismiss" onclick="dismissStudent('${student.id}', this)">Dismiss & Remove</button>` : ''}
             `;
             teachList.appendChild(div);
         });
@@ -1034,15 +1183,15 @@
                     <div class="card-selector-container">
                         <span style="font-size: 0.7rem; font-weight: bold; color: #4b5563; text-align: right;">Card Choice:</span>
                         <div class="card-selector">
-                            <button class="card-btn ${cardStatus === 'none' ? 'active-card-none' : ''}" onclick="setCardStatus('${student.id}', 'none')">No Card</button>
-                            <button class="card-btn ${cardStatus === 'card1' ? 'active-card-1' : ''}" onclick="setCardStatus('${student.id}', 'card1')">Collection Call</button>
-                            <button class="card-btn ${cardStatus === 'card2' ? 'active-card-2' : ''}" onclick="setCardStatus('${student.id}', 'card2')">Green Card</button>
-                            <button class="card-btn ${cardStatus === 'homealone' ? 'active-card-homealone' : ''}" onclick="setCardStatus('${student.id}', 'homealone')">Home Alone</button>
+                            <button class="card-btn ${cardStatus === 'none' ? 'active-card-none' : ''}" onclick="setCardStatus('${student.id}', 'none', this)">No Card</button>
+                            <button class="card-btn ${cardStatus === 'card1' ? 'active-card-1' : ''}" onclick="setCardStatus('${student.id}', 'card1', this)">Collection Call</button>
+                            <button class="card-btn ${cardStatus === 'card2' ? 'active-card-2' : ''}" onclick="setCardStatus('${student.id}', 'card2', this)">Green Card</button>
+                            <button class="card-btn ${cardStatus === 'homealone' ? 'active-card-homealone' : ''}" onclick="setCardStatus('${student.id}', 'homealone', this)">Home Alone</button>
                         </div>
                     </div>
                     <div class="attendance-group">
-                        <button class="att-btn ${isPresent ? 'active-present' : ''}" onclick="setAttendance('${student.id}', true)">Present</button>
-                        <button class="att-btn ${isAbsent ? 'active-absent' : ''}" onclick="setAttendance('${student.id}', false)">Absent</button>
+                        <button class="att-btn ${isPresent ? 'active-present' : ''}" onclick="setAttendance('${student.id}', true, this)">Present</button>
+                        <button class="att-btn ${isAbsent ? 'active-absent' : ''}" onclick="setAttendance('${student.id}', false, this)">Absent</button>
                     </div>
                 </div>
             `;
@@ -1056,7 +1205,7 @@
             classMgrList.innerHTML += `
                 <div class="item-row">
                     <span>${c.name} — <em>${c.time}</em></span>
-                    <button class="btn-delete" onclick="deleteClass('${c.id}')">Delete</button>
+                    <button class="btn-delete" onclick="deleteClass('${c.id}', this)">Delete</button>
                 </div>
             `;
         });
@@ -1069,7 +1218,7 @@
             stuMgrList.innerHTML += `
                 <div class="item-row">
                     <span>${s.name} <small>(${cName})</small> <br><small style="color:#6b7280;">ID: ${s.id} | Phone: ${s.phone || 'N/A'}</small></span>
-                    <button class="btn-delete" onclick="deleteStudent('${s.id}')">Delete</button>
+                    <button class="btn-delete" onclick="deleteStudent('${s.id}', this)">Delete</button>
                 </div>
             `;
         });
