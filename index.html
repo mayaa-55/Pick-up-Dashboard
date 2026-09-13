@@ -87,13 +87,18 @@
             color: white;
         }
         .view-section { display: none; }
-        .view-section.active { display: grid; gap: 15px; }
+        .view-section.active { display: block; }
 
-        .dashboard-grid, .manager-grid, .students-grid {
+        .dashboard-single {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .manager-grid, .students-grid {
             grid-template-columns: 1fr;
         }
         @media (min-width: 900px) {
-            .dashboard-grid, .manager-grid, .students-grid {
+            .manager-grid, .students-grid {
                 grid-template-columns: 1fr 1fr;
                 gap: 20px;
             }
@@ -106,6 +111,7 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             max-height: none;
             overflow-y: visible;
+            margin-bottom: 15px;
         }
         @media (min-width: 900px) {
             .panel {
@@ -152,6 +158,7 @@
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 10px;
+            transition: all 0.3s ease;
         }
         @media (min-width: 500px) {
             .student-card {
@@ -161,6 +168,17 @@
                 padding: 10px 14px;
             }
         }
+        .student-card.alert-arrived {
+            background-color: #fef2f2;
+            border: 2px solid var(--danger);
+            animation: pulse-alert 1.5s infinite;
+        }
+        @keyframes pulse-alert {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
         .student-info { font-weight: 600; font-size: 0.95rem; line-height: 1.3; }
         .student-info span {
             display: block;
@@ -209,6 +227,7 @@
         }
         .badge-waiting { background: #fee2e2; color: #991b1b; }
         .badge-idle { background: #e5e7eb; color: #374151; }
+        .badge-dismissed { background: #d1d5db; color: #4b5563; }
 
         .control-row {
             display: flex;
@@ -329,17 +348,17 @@
 
 <div class="container">
     <header>
-        <h1>🏫 British Council Pickup Dashboard</h1>
+        <h1>🏫 British Council Pickup System</h1>
         <div class="nav-tabs">
-            <button id="tab-dash" class="active" onclick="switchView('dashboard')">Live Dashboard</button>
+            <button id="tab-reception" class="active" onclick="switchView('reception')">Exit Door</button>
+            <button id="tab-teacher" onclick="switchView('teacher')">Waiting Room</button>
             <button id="tab-students" onclick="switchView('students')">Students List</button>
             <button id="tab-mgr" onclick="switchView('manager')">Data Manager</button>
         </div>
     </header>
 
-    <!-- VIEW 1: LIVE DASHBOARD -->
-    <div id="view-dashboard" class="view-section dashboard-grid active">
-        <!-- RECEPTION PANEL -->
+    <!-- VIEW 1: RECEPTION (EXIT DOOR) -->
+    <div id="view-reception" class="view-section dashboard-single active">
         <div class="panel">
             <h2>Exit Door</h2>
             <div class="filter-group">
@@ -359,10 +378,19 @@
             </div>
             <div id="reception-list"></div>
         </div>
+    </div>
 
-        <!-- TEACHER PANEL -->
+    <!-- VIEW 2: TEACHER (WAITING ROOM) -->
+    <div id="view-teacher" class="view-section dashboard-single">
         <div class="panel">
             <h2>Waiting Room</h2>
+            <div class="filter-group">
+                <label for="day-selector-teach">Select Day:</label>
+                <select id="day-selector-teach" class="form-control" onchange="onDayChangeTeach()">
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                </select>
+            </div>
             <div class="filter-group">
                 <label for="teach-class-filter">Select Your Class:</label>
                 <select id="teach-class-filter" onchange="render()"></select>
@@ -372,8 +400,8 @@
         </div>
     </div>
 
-    <!-- VIEW 2: STUDENTS LIST -->
-    <div id="view-students" class="view-section" style="grid-template-columns: 1fr;">
+    <!-- VIEW 3: STUDENTS LIST -->
+    <div id="view-students" class="view-section" style="display: none;">
         <div class="panel">
             <h2>All Students Directory</h2>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
@@ -416,8 +444,8 @@
         </div>
     </div>
 
-    <!-- VIEW 3: DATA MANAGER -->
-    <div id="view-manager" class="view-section manager-grid">
+    <!-- VIEW 4: DATA MANAGER -->
+    <div id="view-manager" class="view-section manager-grid" style="display: none;">
         <div class="panel" style="grid-column: 1 / -1; background: #e0e7ff; border: 1px dashed var(--primary);">
             <h2>🚀 Quick Google Sheet Importer</h2>
             <p style="font-size: 0.85rem; color: #4b5563;">Paste your copied rows from the Google Sheet here to automatically create classes and sort students:</p>
@@ -508,27 +536,52 @@
     }
 
     function switchView(viewName) {
-        document.getElementById('view-dashboard').classList.remove('active');
+        document.getElementById('view-reception').classList.remove('active');
+        document.getElementById('view-reception').style.display = 'none';
+
+        document.getElementById('view-teacher').classList.remove('active');
+        document.getElementById('view-teacher').style.display = 'none';
+
         document.getElementById('view-students').classList.remove('active');
+        document.getElementById('view-students').style.display = 'none';
+
         document.getElementById('view-manager').classList.remove('active');
-        document.getElementById('tab-dash').classList.remove('active');
+        document.getElementById('view-manager').style.display = 'none';
+
+        document.getElementById('tab-reception').classList.remove('active');
+        document.getElementById('tab-teacher').classList.remove('active');
         document.getElementById('tab-students').classList.remove('active');
         document.getElementById('tab-mgr').classList.remove('active');
 
-        if(viewName === 'dashboard') {
-            document.getElementById('view-dashboard').classList.add('active');
-            document.getElementById('tab-dash').classList.add('active');
+        if(viewName === 'reception') {
+            let el = document.getElementById('view-reception');
+            el.classList.add('active');
+            el.style.display = 'block';
+            document.getElementById('tab-reception').classList.add('active');
+        } else if(viewName === 'teacher') {
+            let el = document.getElementById('view-teacher');
+            el.classList.add('active');
+            el.style.display = 'block';
+            document.getElementById('tab-teacher').classList.add('active');
         } else if(viewName === 'students') {
-            document.getElementById('view-students').classList.add('active');
+            let el = document.getElementById('view-students');
+            el.classList.add('active');
+            el.style.display = 'grid';
             document.getElementById('tab-students').classList.add('active');
         } else {
-            document.getElementById('view-manager').classList.add('active');
+            let el = document.getElementById('view-manager');
+            el.classList.add('active');
+            el.style.display = 'grid';
             document.getElementById('tab-mgr').classList.add('active');
         }
         render();
     }
 
     function onDayChangeDash() {
+        render();
+    }
+
+    function onDayChangeTeach() {
         render();
     }
 
@@ -547,6 +600,16 @@
             .eq('id', studentId);
 
         if (error) alert('Error updating arrival: ' + error.message);
+        else loadDataFromSupabase();
+    }
+
+    async function dismissStudent(studentId) {
+        const { error } = await supabaseClient
+            .from('students')
+            .delete()
+            .eq('id', studentId);
+
+        if (error) alert('Error dismissing student: ' + error.message);
         else loadDataFromSupabase();
     }
 
@@ -726,6 +789,9 @@
         let dayDashSelect = document.getElementById('day-selector-dash');
         let currentSelectedDay = dayDashSelect ? dayDashSelect.value : 'Friday';
 
+        let dayTeachSelect = document.getElementById('day-selector-teach');
+        let currentSelectedTeachDay = dayTeachSelect ? dayTeachSelect.value : 'Friday';
+
         let recSelect = document.getElementById('rec-class-filter');
         let teachSelect = document.getElementById('teach-class-filter');
         let newStuClassSelect = document.getElementById('new-student-class');
@@ -743,22 +809,31 @@
         let currentAttendanceFilterVal = studentListAttendanceFilter ? studentListAttendanceFilter.value : 'ALL';
         let currentRecSearch = recSearchInput ? recSearchInput.value.trim().toLowerCase() : '';
 
-        // Filter classes for dashboard based on selected day (Friday / Saturday)
+        // Filter classes for Exit Door based on selected day
         let dashClasses = db.classes.filter(c => {
             let timeStr = (c.time || '').toLowerCase();
             return timeStr.includes(currentSelectedDay.toLowerCase());
         });
 
         recSelect.innerHTML = '<option value="ALL">-- All Students in ' + currentSelectedDay + ' --</option>';
-        teachSelect.innerHTML = '<option value="ALL">-- All Students in ' + currentSelectedDay + ' --</option>';
-
         dashClasses.forEach(c => {
             let label = `${c.name} (${c.time})`;
             recSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
+        });
+
+        // Filter classes for Waiting Room based on selected teacher day
+        let teachClasses = db.classes.filter(c => {
+            let timeStr = (c.time || '').toLowerCase();
+            return timeStr.includes(currentSelectedTeachDay.toLowerCase());
+        });
+
+        teachSelect.innerHTML = '<option value="ALL">-- All Students in ' + currentSelectedTeachDay + ' --</option>';
+        teachClasses.forEach(c => {
+            let label = `${c.name} (${c.time})`;
             teachSelect.innerHTML += `<option value="${c.id}">${label}</option>`;
         });
 
-        // New student dropdown lists classes filtered by the selected import day or all classes
+        // New student dropdown lists all classes
         newStuClassSelect.innerHTML = '';
         db.classes.forEach(c => {
             let label = `${c.name} (${c.time})`;
@@ -785,8 +860,9 @@
         if(studentListAttendanceFilter && currentAttendanceFilterVal) studentListAttendanceFilter.value = currentAttendanceFilterVal;
 
         // Sorting: 
-        // 1. Explicitly absent students go to the bottom.
-        // 2. Arrived students bubble up to the top of the active/waiting lists.
+        // 1. Explicitly absent students go to the absolute bottom.
+        // 2. Active arrived students bubble to the TOP of both lists as high-priority alerts!
+        // 3. Normal in-class students follow.
         let sortedStudents = [...db.students].sort((a, b) => {
             let aAbsent = a.present === false;
             let bAbsent = b.present === false;
@@ -800,7 +876,7 @@
             return 0;
         });
 
-        // 1. RENDER RECEPTION LIST
+        // 1. RENDER RECEPTION LIST (EXIT DOOR)
         let recList = document.getElementById('reception-list');
         recList.innerHTML = '';
         let selectedRecClass = recSelect.value;
@@ -835,7 +911,7 @@
             }
 
             let div = document.createElement('div');
-            div.className = 'student-card';
+            div.className = student.arrived ? 'student-card alert-arrived' : 'student-card';
             div.innerHTML = `
                 <div class="student-info">
                     ${student.name} 
@@ -849,7 +925,7 @@
             recList.appendChild(div);
         });
 
-        // 2. RENDER TEACHER LIST (Waiting Room - Arrived students automatically bubble to the top)
+        // 2. RENDER TEACHER LIST (WAITING ROOM)
         let teachList = document.getElementById('teacher-list');
         teachList.innerHTML = '';
         let selectedTeachClass = teachSelect.value;
@@ -857,7 +933,7 @@
         let teacherStudents = sortedStudents.filter(s => {
             let cObj = db.classes.find(c => c.id === s.classId);
             if (!cObj) return false;
-            let matchesDay = (cObj.time || '').toLowerCase().includes(currentSelectedDay.toLowerCase());
+            let matchesDay = (cObj.time || '').toLowerCase().includes(currentSelectedTeachDay.toLowerCase());
             let isNotAbsent = s.present !== false;
             let matchesClass = selectedTeachClass === 'ALL' || s.classId === selectedTeachClass;
             return matchesDay && isNotAbsent && matchesClass;
@@ -881,9 +957,15 @@
                 ? '<span class="status-badge" style="background: #e5e7eb; color: #374151;">Attendance: Present 🟢</span>'
                 : '<span class="status-badge" style="background: #f3f4f6; color: #6b7280;">Attendance: Unmarked</span>';
 
+            let statusBadgeHTML = '';
+            if (student.arrived) {
+                statusBadgeHTML = `<span class="status-badge badge-waiting" style="margin-top:6px; font-size: 0.8rem; background: var(--danger); color: white;">🚨 PARENTS ARRIVED - SEND STUDENT</span>`;
+            } else {
+                statusBadgeHTML = `<span class="status-badge badge-idle" style="margin-top:6px;">In Class</span>`;
+            }
+
             let div = document.createElement('div');
-            div.className = 'student-card';
-            div.style.borderLeft = student.arrived ? '4px solid #ef4444' : '4px solid #10b981';
+            div.className = student.arrived ? 'student-card alert-arrived' : 'student-card';
             div.innerHTML = `
                 <div class="student-info">
                     ${student.name}
@@ -892,11 +974,9 @@
                         ${attendanceBadge}
                         ${cardBadgeHTML}
                     </div>
-                    <span class="status-badge ${student.arrived ? 'badge-waiting' : 'badge-idle'}" style="margin-top:6px;">
-                        ${student.arrived ? 'Parents Downstairs 🚨' : 'In Class'}
-                    </span>
+                    ${statusBadgeHTML}
                 </div>
-                ${student.arrived ? `<button class="btn-dismiss" onclick="toggleArrival('${student.id}')">Dismiss</button>` : ''}
+                ${student.arrived ? `<button class="btn-dismiss" onclick="dismissStudent('${student.id}')">Dismiss & Remove</button>` : ''}
             `;
             teachList.appendChild(div);
         });
