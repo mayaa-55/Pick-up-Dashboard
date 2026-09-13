@@ -325,6 +325,17 @@
             flex-wrap: wrap;
             align-items: center;
         }
+        .directory-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            margin-top: 0;
+            width: 100%;
+        }
+        @media (min-width: 500px) {
+            .directory-controls { width: auto; }
+        }
         .card-selector-container {
             display: flex;
             flex-direction: column;
@@ -339,6 +350,7 @@
             display: flex;
             gap: 4px;
             flex-wrap: wrap;
+            justify-content: flex-end;
         }
         .card-btn {
             padding: 6px 10px;
@@ -875,6 +887,8 @@
     }
 
     function switchView(viewName) {
+        try { localStorage.setItem('bc-active-tab', viewName); } catch (e) { /* storage unavailable */ }
+
         document.getElementById('view-reception').classList.remove('active');
         document.getElementById('view-reception').style.display = 'none';
 
@@ -989,9 +1003,12 @@
         if (!student) return;
         setBtnLoading(btn);
 
+        let currentStatus = student.cardStatus || 'none';
+        let newStatus = (currentStatus === cardType) ? 'none' : cardType;
+
         const { error } = await supabaseClient
             .from('students')
-            .update({ cardStatus: cardType })
+            .update({ cardStatus: newStatus })
             .eq('id', studentId);
 
         if (error) { alert('Error updating card status: ' + error.message); clearBtnLoading(btn); }
@@ -1386,7 +1403,7 @@
         let cardFilter = studentListCardFilter ? studentListCardFilter.value : 'ALL';
         let attendanceFilter = studentListAttendanceFilter ? studentListAttendanceFilter.value : 'ALL';
 
-        let filteredDirectoryStudents = sortedStudents.filter(s => {
+        let filteredDirectoryStudents = db.students.filter(s => {
             let cObj = db.classes.find(c => c.id === s.classId);
             if (!cObj) return false;
 
@@ -1405,6 +1422,16 @@
             }
 
             return matchesDay && matchesClass && matchesSearch && matchesCard && matchesAttendance;
+        });
+
+        // Keep a stable, name-based order. Only drop a student to the bottom once
+        // BOTH a card choice (not "No Card") AND an attendance status have been set.
+        filteredDirectoryStudents.sort((a, b) => {
+            let aDone = (a.cardStatus && a.cardStatus !== 'none') && (a.present === true || a.present === false);
+            let bDone = (b.cardStatus && b.cardStatus !== 'none') && (b.present === true || b.present === false);
+            if (aDone && !bDone) return 1;
+            if (!aDone && bDone) return -1;
+            return String(a.name || '').localeCompare(String(b.name || ''));
         });
 
         setStatPill('students-count-pill', filteredDirectoryStudents.length, false, 'students');
@@ -1435,11 +1462,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="control-row" style="margin-top: 0; flex-direction: column; align-items: flex-end; gap: 6px;">
+                <div class="control-row directory-controls">
                     <div class="card-selector-container">
                         <span>${icon('flag')}Card Choice</span>
                         <div class="card-selector">
-                            <button class="card-btn ${cardStatus === 'none' ? 'active-card-none' : ''}" onclick="setCardStatus('${student.id}', 'none', this)">${icon('x')}No Card</button>
+                            <button class="card-btn" onclick="setCardStatus('${student.id}', 'none', this)">${icon('x')}No Card</button>
                             <button class="card-btn ${cardStatus === 'card1' ? 'active-card-1' : ''}" onclick="setCardStatus('${student.id}', 'card1', this)">${icon('phone')}Collection Call</button>
                             <button class="card-btn ${cardStatus === 'card2' ? 'active-card-2' : ''}" onclick="setCardStatus('${student.id}', 'card2', this)">${icon('flag')}Green Card</button>
                             <button class="card-btn ${cardStatus === 'homealone' ? 'active-card-homealone' : ''}" onclick="setCardStatus('${student.id}', 'homealone', this)">${icon('home')}Home Alone</button>
@@ -1499,6 +1526,11 @@
     }
 
     // Initialize application on load
+    (function restoreLastTab() {
+        let savedTab = 'reception';
+        try { savedTab = localStorage.getItem('bc-active-tab') || 'reception'; } catch (e) { /* storage unavailable */ }
+        if (savedTab !== 'reception') switchView(savedTab);
+    })();
     loadDataFromSupabase();
     setupRealtimeListeners();
 </script>
